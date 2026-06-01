@@ -1,7 +1,7 @@
 """Tuya Beacon BLE 広告パケット再送スクリプト。
 
 キャプチャした ON/OFF の Service Data を ADV_NONCONN_IND で再送し、
-LED コントローラーの応答をテストする（リプレイ攻撃テスト）。
+LED コントローラーの応答をテストする（リプレイ送信テスト）。
 
 実行環境:
     Linux（Raspberry Pi OS）のみ対応。
