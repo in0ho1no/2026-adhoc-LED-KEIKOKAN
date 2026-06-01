@@ -18,6 +18,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+_INPUT_DIR = Path(__file__).parent / 'input'
+_OUTPUT_DIR = Path(__file__).parent / 'output'
+
 
 @dataclass
 class BlePacket:
@@ -161,23 +164,24 @@ def print_stats(packets: list[BlePacket], label: str) -> None:
 
 
 def main() -> None:
-    """コマンドライン引数でファイルを受け取り、CSVに変換する。"""
-    if len(sys.argv) < 2:
-        print('使用方法: uv run python src/parse_ble_capture.py <input.txt> [output.csv]')
+    """Input フォルダ内の .txt ファイルを一括パースし output フォルダへ CSV を出力する。"""
+    if not _INPUT_DIR.exists():
+        print(f'エラー: input フォルダが見つかりません: {_INPUT_DIR}')
         sys.exit(1)
 
-    input_path = Path(sys.argv[1])
-    if not input_path.exists():
-        print(f'エラー: ファイルが見つかりません: {input_path}')
-        sys.exit(1)
+    txt_files = sorted(_INPUT_DIR.glob('*.txt'))
+    if not txt_files:
+        print(f'処理対象の .txt ファイルが見つかりません: {_INPUT_DIR}')
+        sys.exit(0)
 
-    output_path = Path(sys.argv[2]) if len(sys.argv) >= 3 else input_path.with_suffix('.csv')
+    _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    packets = parse_ble_capture(input_path)
-    print_stats(packets, input_path.name)
-
-    write_csv(packets, output_path)
-    print(f'CSV出力完了: {output_path}')
+    for input_path in txt_files:
+        output_path = _OUTPUT_DIR / input_path.with_suffix('.csv').name
+        packets = parse_ble_capture(input_path)
+        print_stats(packets, input_path.name)
+        write_csv(packets, output_path)
+        print(f'CSV出力完了: {output_path}\n')
 
 
 if __name__ == '__main__':
