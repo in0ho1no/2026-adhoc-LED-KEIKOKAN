@@ -1,0 +1,14 @@
+{
+    "recommendations": [
+        // git環境の推奨
+        "mhutchie.git-graph",  // gitの履歴をグラフで確認できる
+        "eamodio.gitlens",  // blame、差分参照、履歴追跡を強化する
+        
+        // Python環境の推奨
+        "njpwerner.autodocstring",  // docstring
+        "ms-python.mypy-type-checker",  // Python型チェック
+        "ms-python.python",  // Python環境
+        "ms-python.debugpy",  // Pythonデバッグ用
+        "charliermarsh.ruff",  // Python lint formatter用
+    ]
+}
