@@ -135,4 +135,4 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-testpaths = ["src/tests"]
+testpaths = ["src/tests", "src/parse_log/tests"]

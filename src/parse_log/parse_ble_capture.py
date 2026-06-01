@@ -68,7 +68,7 @@ def parse_ble_capture(filepath: Path) -> list[BlePacket]:
         filepath: nRF SnifferのWiresharkテキスト出力ファイルのパス。
 
     Returns:
-        解析されたBLEパケットのリスト。
+        解析されたBLEパケットのリスト。Malformed Packet は除外済み。
     """
     packets: list[BlePacket] = []
     header_re = re.compile(r'^No\.\s+Time')
@@ -112,7 +112,7 @@ def parse_ble_capture(filepath: Path) -> list[BlePacket]:
     if current_packet is not None:
         packets.append(current_packet)
 
-    return packets
+    return [p for p in packets if 'Malformed' not in p.info]
 
 
 def write_csv(packets: list[BlePacket], output_path: Path) -> None:
@@ -129,7 +129,7 @@ def write_csv(packets: list[BlePacket], output_path: Path) -> None:
             writer.writerow(
                 [
                     pkt.no,
-                    pkt.time,
+                    f'{pkt.time:.6f}',
                     pkt.source,
                     pkt.service_data,
                     pkt.info,
@@ -146,11 +146,9 @@ def print_stats(packets: list[BlePacket], label: str) -> None:
         label: 表示ラベル。
     """
     with_service_data = [p for p in packets if p.service_data]
-    malformed_count = sum(1 for p in packets if 'Malformed' in p.info)
     print(f'[{label}]')
     print(f'  総パケット数          : {len(packets)}')
     print(f'  Service Data あり     : {len(with_service_data)}')
-    print(f'  Malformed パケット数  : {malformed_count}')
 
     if with_service_data:
         # Service Data のバイト[2] (0-indexed) の分布を表示
