@@ -8,14 +8,14 @@
 #   sudo bash ble_send.sh off
 #
 # 環境変数:
-#   DURATION : 1回の広告を維持する秒数 (デフォルト: 0.003)
+#   DURATION : 1回の広告データ更新後の待ち時間 (デフォルト: 0)
 #   REPEAT_COUNT : 総送信回数 (デフォルト: 1159)
 #   DEVICE   : HCI デバイス番号             (デフォルト: 0)
 
 set -euo pipefail
 
 DEVICE="${DEVICE:-0}"
-DURATION="${DURATION:-0.003}"
+DURATION="${DURATION:-0}"
 REPEAT_COUNT="${REPEAT_COUNT:-1159}"
 HCI_DEV="hci${DEVICE}"
 
@@ -74,25 +74,19 @@ bring_up_hci() {
     return 1
 }
 
-send_frame() {
+set_adv_data() {
     local adv_data="$1"
-    local label="$2"
-
-    echo "  [${label}] 送信中..."
 
     # HCI_LE_Set_Advertising_Data (OGF=0x08, OCF=0x0008)
     # shellcheck disable=SC2086
     hcitool -i "${HCI_DEV}" cmd 0x08 0x0008 ${adv_data} > /dev/null
+}
 
-    # HCI_LE_Set_Advertise_Enable: 有効化 (OGF=0x08, OCF=0x000A)
-    hcitool -i "${HCI_DEV}" cmd 0x08 0x000A 01 > /dev/null
+set_adv_enable() {
+    local enable_flag="$1"
 
-    sleep "${DURATION}"
-
-    # HCI_LE_Set_Advertise_Enable: 無効化
-    hcitool -i "${HCI_DEV}" cmd 0x08 0x000A 00 > /dev/null
-
-    echo "  [${label}] 完了"
+    # HCI_LE_Set_Advertise_Enable (OGF=0x08, OCF=0x000A)
+    hcitool -i "${HCI_DEV}" cmd 0x08 0x000A "${enable_flag}" > /dev/null
 }
 
 set_adv_params() {
@@ -114,19 +108,13 @@ fi
 
 check_requirements
 
-# 終了時（正常・エラー・Ctrl+C 問わず）に Bluetooth を再起動
-trap 'echo "Bluetooth サービスを再起動中..." && systemctl start bluetooth' EXIT
+trap 'set_adv_enable 00 >/dev/null 2>&1 || true; systemctl start bluetooth >/dev/null 2>&1 || true' EXIT
 
-echo "[1/3] Bluetooth サービスを停止..."
 systemctl stop bluetooth
-
-echo "[2/3] HCI デバイスを UP にする..."
 bring_up_hci
 
-echo "[2/3] Advertising パラメータを設定..."
 set_adv_params
 
-echo "[3/3] ${1^^} コマンドを送信 (各フレーム ${DURATION}s)..."
 if [[ "$1" == "on" ]]; then
     payload_60="${ADV_ON_60}"
     payload_80="${ADV_ON_80}"
@@ -135,19 +123,26 @@ else
     payload_80="${ADV_OFF_80}"
 fi
 
+set_adv_enable 01
+
+echo "送信開始"
+
 for ((i = 1; i <= REPEAT_COUNT; i++)); do
-    echo "  --- ${i}/${REPEAT_COUNT} ---"
     case $(((i - 1) % 3)) in
         0)
-            send_frame "${ADV_UUIDS_03}" "UUID 03"
+            set_adv_data "${ADV_UUIDS_03}"
             ;;
         1)
-            send_frame "${payload_60}" "60系"
+            set_adv_data "${payload_60}"
             ;;
         2)
-            send_frame "${payload_80}" "80系"
+            set_adv_data "${payload_80}"
             ;;
     esac
+
+    sleep "${DURATION}"
 done
+
+set_adv_enable 00
 
 echo "送信終了"
