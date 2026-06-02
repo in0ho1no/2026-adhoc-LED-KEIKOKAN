@@ -9,12 +9,14 @@
 #
 # 環境変数:
 #   DURATION : フレーム種別あたりの送信秒数 (デフォルト: 1.5)
+#   REPEAT_COUNT : 60系/80系の送信セット回数 (デフォルト: 1159)
 #   DEVICE   : HCI デバイス番号             (デフォルト: 0)
 
 set -euo pipefail
 
 DEVICE="${DEVICE:-0}"
 DURATION="${DURATION:-1.5}"
+REPEAT_COUNT="${REPEAT_COUNT:-1159}"
 HCI_DEV="hci${DEVICE}"
 
 # ============================================================
@@ -29,9 +31,9 @@ HCI_DEV="hci${DEVICE}"
 ADV_ON_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F0 24 64 FF 13 C2 14 3A 87 1A 85 DD 5A 00"
 ADV_ON_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F0 DB 29 1B 4A BA 46 A2 8C F4 FE 17 7F 00"
 
-# OFF コマンド (counter=0xeb)
-ADV_OFF_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 EB 44 B3 62 C7 D9 7F FC 4C 92 A1 65 B1 00"
-ADV_OFF_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 EB 17 84 CA 38 B1 5E 24 7E C5 A7 53 77 00"
+# OFF コマンド (counter=0xF3)
+ADV_OFF_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F3 94 47 2A C6 0B AB 49 54 94 74 04 ED 00"
+ADV_OFF_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F3 F1 FE 78 72 6D D0 EF 92 5E 82 7E 44 00"
 
 # ============================================================
 # 関数
@@ -117,12 +119,15 @@ echo "[2/3] HCI デバイスを UP にする..."
 bring_up_hci
 
 echo "[3/3] ${1^^} コマンドを送信 (各フレーム ${DURATION}s)..."
-if [[ "$1" == "on" ]]; then
-    send_frame "${ADV_ON_60}" "60系"
-    send_frame "${ADV_ON_80}" "80系"
-else
-    send_frame "${ADV_OFF_60}" "60系"
-    send_frame "${ADV_OFF_80}" "80系"
-fi
+for ((i = 1; i <= REPEAT_COUNT; i++)); do
+    echo "  --- ${i}/${REPEAT_COUNT} ---"
+    if [[ "$1" == "on" ]]; then
+        send_frame "${ADV_ON_60}" "60系"
+        send_frame "${ADV_ON_80}" "80系"
+    else
+        send_frame "${ADV_OFF_60}" "60系"
+        send_frame "${ADV_OFF_80}" "80系"
+    fi
+done
 
 echo "送信終了"
