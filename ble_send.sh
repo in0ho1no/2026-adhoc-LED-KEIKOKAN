@@ -139,13 +139,13 @@ for ((i = 1; i <= REPEAT_COUNT; i++)); do
     echo "  --- ${i}/${REPEAT_COUNT} ---"
     case $(((i - 1) % 3)) in
         0)
-            send_frame "${payload_60}" "60系"
+            send_frame "${ADV_UUIDS_03}" "UUID 03"
             ;;
         1)
-            send_frame "${payload_80}" "80系"
+            send_frame "${payload_60}" "60系"
             ;;
         2)
-            send_frame "${ADV_UUIDS_03}" "UUID 03"
+            send_frame "${payload_80}" "80系"
             ;;
     esac
 done
