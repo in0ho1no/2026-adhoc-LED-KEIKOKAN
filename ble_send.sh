@@ -34,9 +34,33 @@ STATE_FILE_PATH=""
 # 送信元 Random Address（OFF1回のログに合わせる）
 ADV_RANDOM_ADDR="27 96 7D 51 23 DC"
 
-# ON コマンド (counter=0xf0)
-ADV_ON_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F0 24 64 FF 13 C2 14 3A 87 1A 85 DD 5A 00"
-ADV_ON_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F0 DB 29 1B 4A BA 46 A2 8C F4 FE 17 7F 00"
+# ON コマンドの 5 セット
+# 0x03 の 16-bit Service Class UUIDs
+ON_UUIDS_03_PAYLOADS=(
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 3C 13 33 B9 B7 F9 70 E1 73 6A 6C B8 A1 3B AC E8 22 1C BF 6D"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 41 13 33 B9 B7 F9 70 E1 73 6A 6C B8 A1 3B AC E8 22 1C BF 86"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 42 13 33 B9 B7 F9 70 E1 73 6A 6C B8 A1 3B AC E8 22 1C BF FB"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 3F 13 33 B9 B7 F9 70 E1 73 6A 6C B8 A1 3B AC E8 22 1C BF 10"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 40 13 33 B9 B7 F9 70 E1 73 6A 6C B8 A1 3B AC E8 22 1C BF 50"
+)
+
+# 0x02 の 60系
+ON_60_PAYLOADS=(
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 3C D7 56 47 EF 8F 0F 9E 63 BD AE 22 DB 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 41 86 37 AA 07 91 A2 F7 77 95 04 19 35 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 42 FD 25 38 9A E3 1D 6C 82 6B 52 E4 8F 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 3F B9 5D 32 3C B1 F7 77 C8 18 00 92 27 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 40 A4 07 4E E6 A0 BC 4C EA D1 BE A0 5A 00"
+)
+
+# 0x02 の 80系
+ON_80_PAYLOADS=(
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 3C 9E 4A 54 DB 26 99 FD 49 67 E7 66 DA 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 41 51 C9 17 D6 1D 58 46 9D 7C 4E 1E 87 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 42 32 AE D5 7E A8 FC 0D D0 B4 39 51 35 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 3F 58 50 EF 80 FB 4F 4E C6 9E 99 9F 50 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 40 EF 6A E5 F9 E4 4F E3 AB D2 8D D7 EC 00"
+)
 
 # OFF コマンドの 5 セット
 # 0x03 の 16-bit Service Class UUIDs
@@ -168,11 +192,16 @@ select_payload_pair() {
 
     case "$command_name" in
         on)
-            out_payload_60="$ADV_ON_60"
-            out_payload_80="$ADV_ON_80"
-            out_payload_03="${OFF_UUIDS_03_PAYLOADS[0]}"
-            out_sequence_label='ON 固定セット'
-            STATE_FILE_PATH="${STATE_FILE_BASE}_on.idx"
+            local sequence_length="${#ON_60_PAYLOADS[@]}"
+            local state_file="${STATE_FILE_BASE}_on.idx"
+            local sequence_index
+            sequence_index="$(load_sequence_index "$state_file" "$sequence_length")"
+            out_payload_60="${ON_60_PAYLOADS[$sequence_index]}"
+            out_payload_80="${ON_80_PAYLOADS[$sequence_index]}"
+            out_payload_03="${ON_UUIDS_03_PAYLOADS[$sequence_index]}"
+            out_sequence_label="$((sequence_index + 1))/${sequence_length}"
+            store_sequence_index "$state_file" "$(((sequence_index + 1) % sequence_length))"
+            STATE_FILE_PATH="$state_file"
             ;;
         off)
             local sequence_length="${#OFF_60_PAYLOADS[@]}"
