@@ -14,10 +14,14 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 DEVICE="${DEVICE:-0}"
 DURATION="${DURATION:-0}"
 REPEAT_COUNT="${REPEAT_COUNT:-1159}"
 HCI_DEV="hci${DEVICE}"
+STATE_FILE_BASE="${STATE_FILE_BASE:-${SCRIPT_DIR}/.ble_send_state}"
+STATE_FILE_PATH=""
 
 # ============================================================
 # HCI_LE_Set_Advertising_Data パラメータ（32バイト）
@@ -27,8 +31,16 @@ HCI_DEV="hci${DEVICE}"
 #   byte[8-31] : Service Data AD  (17 16 50 FD + 20バイトのペイロード)
 # ============================================================
 
-# 0x03 の 16-bit Service Class UUIDs（OFF1回のログで観測された UUID 列）
-ADV_UUIDS_03="1F 02 01 06 1B 03 18 C6 E8 C6 E8 01 F3 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 DB"
+# 0x03 の 16-bit Service Class UUIDs
+OFF_UUIDS_03_PAYLOADS=(
+    "1F 02 01 06 1B 03 18 C6 E8 01 E8 13 F3 8A D6 33 BA 98 08 64 8A 1B BE 51 EF DC 11 CE 6A 52 DB"
+    "1F 02 01 06 1B 03 18 C6 E8 02 E8 13 1F 8A D6 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 C7"
+    "1F 02 01 06 1B 03 18 C6 E8 02 E8 13 20 8A D6 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 8C"
+    "1F 02 01 06 1B 03 18 C6 E8 02 E8 13 21 8A D6 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 5A"
+    "1F 02 01 06 1B 03 18 C6 E8 02 E8 13 22 8A D6 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 27"
+)
+
+ON_UUIDS_03_PAYLOAD="1F 02 01 06 1B 03 18 C6 E8 C6 E8 01 F3 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 DB"
 
 # 送信元 Random Address（OFF1回のログに合わせる）
 ADV_RANDOM_ADDR="27 96 7D 51 23 DC"
@@ -37,9 +49,22 @@ ADV_RANDOM_ADDR="27 96 7D 51 23 DC"
 ADV_ON_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F0 24 64 FF 13 C2 14 3A 87 1A 85 DD 5A 00"
 ADV_ON_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F0 DB 29 1B 4A BA 46 A2 8C F4 FE 17 7F 00"
 
-# OFF コマンド (counter=0xF3)
-ADV_OFF_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F3 94 47 2A C6 0B AB 49 54 94 74 04 ED 00"
-ADV_OFF_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F3 F1 FE 78 72 6D D0 EF 92 5E 82 7E 44 00"
+# OFF コマンドの 5 セット
+OFF_60_PAYLOADS=(
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F3 94 47 2A C6 0B AB 49 54 94 74 04 ED 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 1F 01 D8 92 08 B7 AF C2 E5 FB 88 7D FE 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 20 2F 72 27 51 B6 6D B0 20 31 7D B1 42 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 21 70 06 2B 05 7D B0 F1 FE 43 C1 47 A2 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 02 22 1E E3 B9 FA 1E F0 6E D7 4A EA D1 92 00"
+)
+
+OFF_80_PAYLOADS=(
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F3 F1 FE 78 72 6D D0 EF 92 5E 82 7E 44 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 1F BF 1C AE E1 3D 73 2A 99 5A 65 5D EC 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 20 C2 D3 13 88 13 71 D4 99 1B CC 10 26 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 21 53 0D A7 03 70 33 B7 E2 85 B3 6C 69 00"
+    "1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 02 22 97 3F E1 DE 24 C6 55 F4 C6 80 DB 09 00"
+)
 
 # ============================================================
 # 関数
@@ -104,6 +129,70 @@ set_adv_params() {
         A0 00 A0 00 03 01 00 00 00 00 00 00 00 07 00 > /dev/null
 }
 
+normalize_sequence_index() {
+    local raw_value="$1"
+    local sequence_length="$2"
+
+    if [[ ! "$raw_value" =~ ^[0-9]+$ ]]; then
+        raw_value=0
+    fi
+
+    echo "$((raw_value % sequence_length))"
+}
+
+load_sequence_index() {
+    local state_file="$1"
+    local sequence_length="$2"
+    local stored_value=0
+
+    if [[ -f "$state_file" ]]; then
+        stored_value="$(<"$state_file")"
+    fi
+
+    normalize_sequence_index "$stored_value" "$sequence_length"
+}
+
+store_sequence_index() {
+    local state_file="$1"
+    local next_index="$2"
+
+    printf '%s\n' "$next_index" > "$state_file"
+}
+
+select_payload_pair() {
+    local command_name="$1"
+    local -n out_payload_60="$2"
+    local -n out_payload_80="$3"
+    local -n out_uuid_03="$4"
+    local -n out_sequence_label="$5"
+
+    case "$command_name" in
+        on)
+            out_payload_60="$ADV_ON_60"
+            out_payload_80="$ADV_ON_80"
+            out_uuid_03="$ON_UUIDS_03_PAYLOAD"
+            out_sequence_label='ON 固定セット'
+            STATE_FILE_PATH="${STATE_FILE_BASE}_on.idx"
+            ;;
+        off)
+            local sequence_length="${#OFF_60_PAYLOADS[@]}"
+            local state_file="${STATE_FILE_BASE}_off.idx"
+            local sequence_index
+            sequence_index="$(load_sequence_index "$state_file" "$sequence_length")"
+            out_payload_60="${OFF_60_PAYLOADS[$sequence_index]}"
+            out_payload_80="${OFF_80_PAYLOADS[$sequence_index]}"
+            out_uuid_03="${OFF_UUIDS_03_PAYLOADS[$sequence_index]}"
+            out_sequence_label="$((sequence_index + 1))/${sequence_length}"
+            store_sequence_index "$state_file" "$(((sequence_index + 1) % sequence_length))"
+            STATE_FILE_PATH="$state_file"
+            ;;
+        *)
+            echo "内部エラー: 未知のコマンドです: $command_name" >&2
+            exit 1
+            ;;
+    esac
+}
+
 # ============================================================
 # メイン
 # ============================================================
@@ -125,22 +214,18 @@ set_random_address
 
 set_adv_params
 
-if [[ "$1" == "on" ]]; then
-    payload_60="${ADV_ON_60}"
-    payload_80="${ADV_ON_80}"
-else
-    payload_60="${ADV_OFF_60}"
-    payload_80="${ADV_OFF_80}"
-fi
+select_payload_pair "$1" payload_60 payload_80 payload_03 sequence_label
 
 set_adv_enable 01
 
 echo "送信開始"
+echo "  選択セット: ${sequence_label}"
+echo "  状態ファイル: ${STATE_FILE_PATH}"
 
 for ((i = 1; i <= REPEAT_COUNT; i++)); do
     case $(((i - 1) % 3)) in
         0)
-            set_adv_data "${ADV_UUIDS_03}"
+            set_adv_data "${payload_03}"
             ;;
         1)
             set_adv_data "${payload_60}"
