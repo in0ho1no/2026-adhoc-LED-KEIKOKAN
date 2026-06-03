@@ -41,11 +41,11 @@ ADV_ON_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F0 DB 29 1B 4A 
 # OFF コマンドの 5 セット
 # 0x03 の 16-bit Service Class UUIDs
 OFF_UUIDS_03_PAYLOADS=(
-    "1F 02 01 06 1B 03 18 c6 e8 c6 e8 01 f3 13 d6 8a 33 44 b0 ef 1c 4c 07 0d 9c 1a 58 94 8e 6a 52 db"
-    "1F 02 01 06 1B 03 18 c6 e8 c6 e8 02 1f 13 d6 8a 33 44 b0 ef 1c 4c 07 0d 9c 1a 58 94 8e 6a 52 c7"
-    "1F 02 01 06 1B 03 18 c6 e8 c6 e8 02 20 13 d6 8a 33 44 b0 ef 1c 4c 07 0d 9c 1a 58 94 8e 6a 52 8c"
-    "1F 02 01 06 1B 03 18 c6 e8 c6 e8 02 21 13 d6 8a 33 44 b0 ef 1c 4c 07 0d 9c 1a 58 94 8e 6a 52 5a"
-    "1F 02 01 06 1B 03 18 c6 e8 c6 e8 02 22 13 d6 8a 33 44 b0 ef 1c 4c 07 0d 9c 1a 58 94 8e 6a 52 27"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 01 F3 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 DB"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 1F 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 C7"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 20 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 8C"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 21 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 5A"
+    "1F 02 01 06 1B 03 18 C6 E8 C6 E8 02 22 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 27"
 )
 
 # 0x02 の 60系
@@ -163,14 +163,14 @@ select_payload_pair() {
     local command_name="$1"
     local -n out_payload_60="$2"
     local -n out_payload_80="$3"
-    local -n out_uuid_03="$4"
+    local -n out_payload_03="$4"
     local -n out_sequence_label="$5"
 
     case "$command_name" in
         on)
             out_payload_60="$ADV_ON_60"
             out_payload_80="$ADV_ON_80"
-            out_uuid_03="$ON_UUIDS_03_PAYLOAD"
+            out_payload_03="${OFF_UUIDS_03_PAYLOADS[0]}"
             out_sequence_label='ON 固定セット'
             STATE_FILE_PATH="${STATE_FILE_BASE}_on.idx"
             ;;
@@ -181,7 +181,7 @@ select_payload_pair() {
             sequence_index="$(load_sequence_index "$state_file" "$sequence_length")"
             out_payload_60="${OFF_60_PAYLOADS[$sequence_index]}"
             out_payload_80="${OFF_80_PAYLOADS[$sequence_index]}"
-            out_uuid_03="${OFF_UUIDS_03_PAYLOADS[$sequence_index]}"
+            out_payload_03="${OFF_UUIDS_03_PAYLOADS[$sequence_index]}"
             out_sequence_label="$((sequence_index + 1))/${sequence_length}"
             store_sequence_index "$state_file" "$(((sequence_index + 1) % sequence_length))"
             STATE_FILE_PATH="$state_file"
