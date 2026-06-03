@@ -30,6 +30,9 @@ HCI_DEV="hci${DEVICE}"
 # 0x03 の 16-bit Service Class UUIDs（OFF1回のログで観測された UUID 列）
 ADV_UUIDS_03="1F 02 01 06 1B 03 18 C6 E8 C6 E8 01 F3 13 D6 8A 33 44 B0 EF 1C 4C 07 0D 9C 1A 58 94 8E 6A 52 DB"
 
+# 送信元 Random Address（OFF1回のログに合わせる）
+ADV_RANDOM_ADDR="27 96 7D 51 23 DC"
+
 # ON コマンド (counter=0xf0)
 ADV_ON_60="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 01 F0 24 64 FF 13 C2 14 3A 87 1A 85 DD 5A 00"
 ADV_ON_80="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 01 F0 DB 29 1B 4A BA 46 A2 8C F4 FE 17 7F 00"
@@ -89,11 +92,16 @@ set_adv_enable() {
     hcitool -i "${HCI_DEV}" cmd 0x08 0x000A "${enable_flag}" > /dev/null
 }
 
+set_random_address() {
+    # HCI_LE_Set_Random_Address (OGF=0x08, OCF=0x0005)
+    hcitool -i "${HCI_DEV}" cmd 0x08 0x0005 ${ADV_RANDOM_ADDR} > /dev/null
+}
+
 set_adv_params() {
     # HCI_LE_Set_Advertising_Parameters (OGF=0x08, OCF=0x0006)
-    # ADV_NONCONN_IND, interval=100ms (0x00A0), 全チャネル, パブリックアドレス
+    # ADV_NONCONN_IND, interval=100ms (0x00A0), 全チャネル, Random Address
     hcitool -i "${HCI_DEV}" cmd 0x08 0x0006 \
-        A0 00 A0 00 03 00 00 00 00 00 00 00 00 07 00 > /dev/null
+        A0 00 A0 00 03 01 00 00 00 00 00 00 00 07 00 > /dev/null
 }
 
 # ============================================================
@@ -112,6 +120,8 @@ trap 'set_adv_enable 00 >/dev/null 2>&1 || true; systemctl start bluetooth >/dev
 
 systemctl stop bluetooth
 bring_up_hci
+
+set_random_address
 
 set_adv_params
 
