@@ -34,6 +34,16 @@ STATE_FILE_PATH=""
 # 送信元 Random Address（OFF1回のログに合わせる）
 ADV_RANDOM_ADDR="27 96 7D 51 23 DC"
 
+# ペアリングコマンド
+PAIR_UUIDS_03_PAYLOAD="1F 02 01 06 1B 03 18 C6 E8 C6 E9 04 AE 11 ED F0 33 E1 95 33 E9 11 41 06 22 75 F5 A8 12 32 51 11"
+PAIR_60_PAYLOAD="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 04 AE 68 6E 5B C0 E1 C8 A3 6C 43 C3 41 B0 00"
+PAIR_80_PAYLOAD="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 04 AE 01 4E 3B 0D 85 8B 04 B8 EA DB C6 54 00"
+
+# ペアリング解除コマンド
+UNPAIR_UUIDS_03_PAYLOAD="1F 02 01 06 1B 03 18 C6 E8 C6 E8 04 AF 12 ED 08 ED BA A4 93 E4 91 2A 00 8E 71 62 8B BB 23 BF DF"
+UNPAIR_60_PAYLOAD="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 60 00 00 04 AF C1 E7 1A 30 DF 06 8B B8 76 BC 64 84 00"
+UNPAIR_80_PAYLOAD="1F 02 01 06 03 02 50 FD 17 16 50 FD 40 80 80 00 00 04 AF E4 95 A2 FC 2A 1C B9 9D 47 46 DD 77 00"
+
 # ON コマンドの 5 セット
 # 0x03 の 16-bit Service Class UUIDs
 ON_UUIDS_03_PAYLOADS=(
@@ -203,6 +213,20 @@ select_payload_pair() {
             store_sequence_index "$state_file" "$(((sequence_index + 1) % sequence_length))"
             STATE_FILE_PATH="$state_file"
             ;;
+        pair)
+            out_payload_60="$PAIR_60_PAYLOAD"
+            out_payload_80="$PAIR_80_PAYLOAD"
+            out_payload_03="$PAIR_UUIDS_03_PAYLOAD"
+            out_sequence_label='PAIR 固定セット'
+            STATE_FILE_PATH='(なし)'
+            ;;
+        unpair)
+            out_payload_60="$UNPAIR_60_PAYLOAD"
+            out_payload_80="$UNPAIR_80_PAYLOAD"
+            out_payload_03="$UNPAIR_UUIDS_03_PAYLOAD"
+            out_sequence_label='UNPAIR 固定セット'
+            STATE_FILE_PATH='(なし)'
+            ;;
         off)
             local sequence_length="${#OFF_60_PAYLOADS[@]}"
             local state_file="${STATE_FILE_BASE}_off.idx"
@@ -227,7 +251,7 @@ select_payload_pair() {
 # ============================================================
 
 if [[ "${1:-}" != "on" && "${1:-}" != "off" ]]; then
-    echo "使い方: sudo bash $0 on|off" >&2
+    echo "使い方: sudo bash $0 on|off|pair|unpair" >&2
     echo "  DURATION=<秒> DEVICE=<番号> sudo bash $0 on  # 環境変数での設定も可" >&2
     exit 1
 fi
