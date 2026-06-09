@@ -56,5 +56,13 @@
 		},
 
 		"autoDocstring.docstringFormat": "google",
+
+		"chat.tools.terminal.autoApprove": {
+			// Python用許可設定
+			"uv run ruff": true,
+			"uv run mypy": true,
+			"uv run pyright": true,
+			"uv run pytest": true,
+		},
 	}
 }
